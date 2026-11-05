@@ -561,11 +561,13 @@ class SessionsController extends AsyncNotifier<List<SessionSummary>> {
   Future<String> create() async {
     final conn = ref.read(activeConnectionProvider).value;
     if (conn == null) throw StateError('not connected');
-    // Remote hosts: only the working directory configured for that host, else
-    // the remote DSH's own default.
+    // Remote hosts: the working directory configured for that host, else the
+    // workspace used last (as the official client does), else the remote DSH's
+    // own default.
     final created = await createSessionInWorkspace(
       conn.client,
-      await workspaceForNewSession(ref),
+      await workspaceForNewSession(ref) ??
+          _recentForNewChat(conn, ref.read(workspacesProvider), state.value)?.workspaceId,
       cwd: conn.isLocal ? localWorkspaceDir : conn.workingDirectory,
     );
     // Safe mode keeps the default preset: the agent there repairs the engine
@@ -795,6 +797,33 @@ class SessionsController extends AsyncNotifier<List<SessionSummary>> {
 }
 
 final sessionsProvider = AsyncNotifierProvider<SessionsController, List<SessionSummary>>(SessionsController.new);
+
+/// A remote host with no working directory of its own: without a workspace, a
+/// new conversation would land wherever its `dsh web` happened to start.
+bool _hostPicksNewChatDirectory(HostConnection? conn) => conn != null && !conn.isLocal && conn.workingDirectory == null;
+
+Workspace? _recentForNewChat(HostConnection? conn, WorkspacesState registry, List<SessionSummary>? sessions) {
+  if (!_hostPicksNewChatDirectory(conn) || !registry.ready || sessions == null) return null;
+  return recentWorkspace(registry.workspaces, sessions);
+}
+
+/// Where a new conversation falls back to when the drawer selects no workspace;
+/// null while the lists load, on hosts with a directory of their own, or when
+/// the host has no workspace yet.
+final recentWorkspaceForNewChatProvider = Provider<Workspace?>((ref) {
+  final conn = ref.watch(activeConnectionProvider).value;
+  // Elsewhere the chat screen must not start the lists just to learn this.
+  if (!_hostPicksNewChatDirectory(conn)) return null;
+  return _recentForNewChat(conn, ref.watch(workspacesProvider), ref.watch(sessionsProvider).value);
+});
+
+/// Whether a new conversation will run in the host's own default directory,
+/// because the host has no workspace to fall back to.
+final newChatInHostDefaultProvider = Provider<bool>((ref) {
+  if (!_hostPicksNewChatDirectory(ref.watch(activeConnectionProvider).value)) return false;
+  final registry = ref.watch(workspacesProvider);
+  return registry.ready && registry.workspaces.isEmpty;
+});
 
 /// The title reads of one connection ([SessionsController._readTitles]).
 class _TitleReads {

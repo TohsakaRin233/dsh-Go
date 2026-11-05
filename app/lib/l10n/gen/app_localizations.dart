@@ -31136,6 +31136,12 @@ abstract class L10n {
   /// **'切换工作区'**
   String get viewEmptySwitchWorkspace;
 
+  /// No description provided for @viewEmptyHostDefaultDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'主机默认目录'**
+  String get viewEmptyHostDefaultDirectory;
+
   /// No description provided for @viewScheduleTitle.
   ///
   /// In zh, this message translates to:
