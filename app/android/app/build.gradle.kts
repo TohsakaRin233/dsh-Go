@@ -1,4 +1,4 @@
-import java.time.OffsetDateTime
+﻿import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.Properties
 
@@ -143,7 +143,7 @@ dependencies {
     // .tar.xz support for the rootfs bundle.
     implementation("org.tukaani:xz:1.10")
 
-    // 不打扰模式 (phone/background): a shell-uid privileged display via Shizuku or self-ADB.
+    // 涓嶆墦鎵版ā寮?(phone/background): a shell-uid privileged display via Shizuku or self-ADB.
     implementation("dev.rikka.shizuku:api:13.1.5")       // MIT
     implementation("dev.rikka.shizuku:provider:13.1.5")  // MIT
     implementation("com.github.MuntashirAkon:libadb-android:3.1.1") // used under its Apache-2.0 option; pulls in spake2-android (LGPL-3.0)
@@ -152,4 +152,9 @@ dependencies {
     // pulls in (bcprov-jdk15to18:1.81); adding jdk18on next to it duplicates every class.
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
     implementation("androidx.webkit:webkit:1.15.0") // Apache-2.0: web islands' force dark (webview_flutter's own version)
+
+    // Embedded tailnet (tsnet + gVisor), built with gomobile from native/tailnet-go.
+    // arm64 only for now: the x64 flavour builds without it (see docs/embedded-tailnet).
+    add("arm64Implementation", files("libs/tailnet-arm64.aar"))
+    add("x64Implementation", files("libs/tailnet-x64.aar"))
 }

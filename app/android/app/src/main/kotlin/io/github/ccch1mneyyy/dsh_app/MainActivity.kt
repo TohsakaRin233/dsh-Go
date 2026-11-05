@@ -21,6 +21,7 @@ import io.github.ccch1mneyyy.dsh_app.notify.NotifyPlugin
 import io.github.ccch1mneyyy.dsh_app.phone.PhonePlugin
 import io.github.ccch1mneyyy.dsh_app.runtime.LaunchStart
 import io.github.ccch1mneyyy.dsh_app.runtime.RuntimePlugin
+import io.github.ccch1mneyyy.dsh_app.tailnet.TailnetPlugin
 import io.github.ccch1mneyyy.dsh_app.share.SharePlugin
 import io.github.ccch1mneyyy.dsh_app.shortcuts.ShortcutsPlugin
 import io.github.ccch1mneyyy.dsh_app.update.UpdatePlugin
@@ -41,6 +42,7 @@ class MainActivity : FlutterActivity() {
         cache.get(ENGINE_ID)?.let { return it }
         return FlutterEngine(applicationContext).also { engine ->
             engine.plugins.add(RuntimePlugin())
+            engine.plugins.add(TailnetPlugin())
             engine.plugins.add(PhonePlugin())
             engine.plugins.add(NotifyPlugin())
             engine.plugins.add(FilesPlugin())

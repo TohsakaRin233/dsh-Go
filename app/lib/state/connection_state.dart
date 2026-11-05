@@ -9,6 +9,8 @@ import '../remote/network_watch.dart';
 import '../remote/relay/relay_backend.dart';
 import '../remote/ssh/ssh_link.dart';
 import '../remote/ssh/ssh_transport.dart';
+import '../remote/tailnet/tailnet_bridge.dart';
+import '../remote/tailnet/tailnet_transport.dart';
 import '../runtime/runtime_bridge.dart';
 import '../runtime/runtime_state.dart';
 import 'hosts_state.dart';
@@ -155,7 +157,24 @@ final localConnectionProvider = AsyncNotifierProvider<LocalConnectionController,
 final networkKicksProvider = Provider<Stream<void>>((ref) => networkKicks());
 
 /// Opens SSH connections (dartssh2); tests swap in a fake server.
-final sshTransportFactoryProvider = Provider<SshTransportFactory>((ref) => DartSshTransport.connect);
+/// The embedded tailnet node (Kotlin `TailnetPlugin`, Go `tsnet`).
+final tailnetBridgeProvider = Provider<TailnetBridge>((ref) {
+  final bridge = TailnetBridgeChannel();
+  ref.onDispose(bridge.dispose);
+  return bridge;
+});
+
+/// Opens SSH connections (dartssh2); tests swap in a fake server.
+///
+/// A host that only exists inside the tailnet fails the direct attempt and is
+/// retried through the embedded bridge — see tailnetAwareTransport. Everything
+/// downstream (host-key pinning, `dsh web` bootstrap, forwarding, keepalive) is
+/// unchanged because the second attempt is the same transport with a different
+/// address.
+final sshTransportFactoryProvider = Provider<SshTransportFactory>((ref) {
+  final tailnet = ref.read(tailnetBridgeProvider);
+  return (params, verifyHostKey) => tailnetAwareTransport(tailnet, params, verifyHostKey);
+});
 
 /// Builds the link for one remote host. Overridable so tests can inject fake
 /// transports.

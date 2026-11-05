@@ -33,3 +33,6 @@ site/build/
 
 # Release assets (tooling/release_assets.py)
 /dist/
+
+# Embedded tailnet AAR: built locally by tooling/build-tailnet-aar.ps1, never committed.
+app/android/app/libs/*.aar
