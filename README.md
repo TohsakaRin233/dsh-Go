@@ -1,3 +1,16 @@
+> **本仓库 fork 自 [ccch1mneyyy/dsh-Go](https://github.com/ccch1mneyyy/dsh-Go)，原作者 [@ccch1mneyyy](https://github.com/ccch1mneyyy)。**
+>
+> 上游项目采用 **AGPL-3.0** 许可证，本 fork 同样遵循；`LICENSE`、`THIRD_PARTY_NOTICES.md`、`ASSETS.md`
+> 均原样保留，未做删改。原作者提供的服务、发布产物与其商标（含「DSH Go」名称、图标、Deepy 小鲸鱼
+> 与鲸娘形象）不属于本 fork 的一部分，也不在本 fork 的授权范围内。
+>
+> **本 fork 的改动**：为 dsh-go 增加「内嵌用户态 Tailnet」远程接入——用 tsnet + gVisor 在 App 进程内
+> 运行一个用户态 Tailscale 节点，手机无需安装官方 Tailscale、不启用 VpnService、不代理全局流量，
+> 即可访问用户自有 Tailnet（例如经 NAS 的 SSH 访问 DSH）。设计与真机实测记录见
+> [`docs/embedded-tailnet/`](docs/embedded-tailnet/)。上游更新时本 fork 会同步。
+
+---
+
 <p align="center">
   <b>简体中文</b> · <a href="README.en.md">English</a>
 </p>
