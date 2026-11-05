@@ -1,3 +1,19 @@
+> **This repository is a fork of [ccch1mneyyy/dsh-Go](https://github.com/ccch1mneyyy/dsh-Go),
+> originally by [@ccch1mneyyy](https://github.com/ccch1mneyyy).**
+>
+> The upstream project is licensed under **AGPL-3.0**, and this fork follows the same license.
+> `LICENSE`, `THIRD_PARTY_NOTICES.md` and `ASSETS.md` are kept unmodified. The upstream author's
+> services, release artifacts and trademarks (including the "DSH Go" name, icons, and the Deepy
+> whale / whale-girl artwork) are not part of this fork and are not covered by its license.
+>
+> **What this fork changes**: it adds an embedded userspace Tailnet transport — a tsnet + gVisor
+> Tailscale node running inside the app process, so the phone reaches its owner's tailnet without
+> the official Tailscale app, without VpnService and without proxying global traffic. Design notes
+> and real-device test logs live in [`docs/embedded-tailnet/`](docs/embedded-tailnet/).
+> Upstream updates are rebased in.
+
+---
+
 <p align="center">
   <a href="README.md">简体中文</a> · <b>English</b>
 </p>
