@@ -7483,6 +7483,12 @@ class L10nZh extends L10n {
   String get launchFooter => '图片、动图 8 MB 以内，视频 30 MB 以内。冷启动时完整播放一遍，轻点可跳过';
 
   @override
+  String get launchBootAnimation => '开屏动画';
+
+  @override
+  String get launchBootAnimationSub => '冷启动随机播一段鲸鱼娘动画；关掉就用原来的默认动画';
+
+  @override
   String get launchChanged => '启动画面已更换';
 
   @override

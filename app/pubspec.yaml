@@ -124,6 +124,9 @@ flutter:
           weight: 700
 
   assets:
+    # The bundled opening clips (lib/launch/builtin_launch.dart): four short whale-girl
+    # animations, 720×1600, silent, each with its first frame as a poster.
+    - assets/boot/
     # Full upstream WebRTC Android release notices, shown by LicenseRegistry.
     - assets/licenses/webrtc-150.7871.04.md
     # Phone layout for the embedded DSH Web (see lib/ui/web/web_view_page.dart).

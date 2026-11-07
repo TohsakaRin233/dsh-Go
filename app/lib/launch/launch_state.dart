@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import 'builtin_launch.dart';
 import 'custom_launch.dart';
 import 'launch_media.dart';
 
@@ -270,7 +271,9 @@ class LaunchController extends ChangeNotifier {
       final snapshot = await LaunchSnapshot.fromMap(await channel.begin());
       if (snapshot == null) return null;
       final stored = await CustomLaunch.load();
-      final custom = stored != null && stored.on ? stored : null;
+      // 用户自己的画面优先；没有（或关着）就随机挑一段包里带的开屏动画（builtin_launch.dart），
+      // 它也关着才是原来的默认动画。
+      final custom = stored != null && stored.on ? stored : await BuiltinLaunch.pick();
       final controller = LaunchController(snapshot: snapshot, custom: custom, channel: channel);
       channel.listen(controller.handOver);
       if (custom != null) unawaited(controller.openMedia(screen ?? _screen()));

@@ -36,3 +36,8 @@ site/build/
 
 # Embedded tailnet AAR: built locally by tooling/build-tailnet-aar.ps1, never committed.
 app/android/app/libs/*.aar
+
+# JVM heap dumps from memory profiling (never commit)
+*.hprof
+*.bak
+*.bak-*

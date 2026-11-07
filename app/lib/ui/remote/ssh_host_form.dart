@@ -49,6 +49,8 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
   final _password = TextEditingController();
   final _privateKey = TextEditingController();
   final _passphrase = TextEditingController();
+  /// Optional auth-proxy key (2026-11-06 A 方案).
+  final _proxyKey = TextEditingController();
 
   late SshAuthMethod _auth = widget.existing?.auth ?? SshAuthMethod.password;
   late String? _keyType = widget.existing?.hostKeyType;
@@ -87,6 +89,7 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
     _password,
     _privateKey,
     _passphrase,
+    _proxyKey,
   ]);
 
   String _signature() => jsonEncode({
@@ -99,6 +102,7 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
     'password': _password.text,
     'privateKey': _privateKey.text,
     'passphrase': _passphrase.text,
+    'proxyKey': _proxyKey.text,
     'auth': _auth.name,
     'keyType': _keyType,
     'keyFingerprint': _keyFingerprint,
@@ -124,7 +128,7 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
 
   Future<void> _loadSecrets() async {
     final clean = jsonDecode(_clean) as Map<String, dynamic>;
-    final controllers = [_password, _privateKey, _passphrase];
+    final controllers = [_password, _privateKey, _passphrase, _proxyKey];
     final initial = {for (final controller in controllers) controller: controller.text};
     final edited = <TextEditingController>{};
     void trackEdits() {
@@ -151,6 +155,7 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
       if (!edited.contains(_password)) _password.text = secrets.password ?? '';
       if (!edited.contains(_privateKey)) _privateKey.text = secrets.privateKey ?? '';
       if (!edited.contains(_passphrase)) _passphrase.text = secrets.passphrase ?? '';
+      if (!edited.contains(_proxyKey)) _proxyKey.text = secrets.proxyKey ?? '';
       // Hydrate only the original secret values in the clean baseline. Other
       // fields may have been edited while secure storage was being read.
       _clean = jsonEncode({
@@ -158,6 +163,7 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
         'password': secrets.password ?? '',
         'privateKey': secrets.privateKey ?? '',
         'passphrase': secrets.passphrase ?? '',
+        'proxyKey': secrets.proxyKey ?? '',
       });
     });
   }
@@ -166,7 +172,7 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
   void dispose() {
     unawaited(_testSub?.cancel());
     unawaited(_test?.close());
-    for (final c in [_name, _host, _port, _user, _command, _cwd, _password, _privateKey, _passphrase]) {
+    for (final c in [_name, _host, _port, _user, _command, _cwd, _password, _privateKey, _passphrase, _proxyKey]) {
       c.dispose();
     }
     super.dispose();
@@ -226,8 +232,12 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
     if (_errors.containsKey(field)) setState(() => _errors = {..._errors}..remove(field));
   }
 
-  SshSecrets get _secrets =>
-      SshSecrets(password: _password.text, privateKey: _privateKey.text, passphrase: _passphrase.text);
+  SshSecrets get _secrets => SshSecrets(
+    password: _password.text,
+    privateKey: _privateKey.text,
+    passphrase: _passphrase.text,
+    proxyKey: _proxyKey.text.trim().isEmpty ? null : _proxyKey.text.trim(),
+  );
 
   Future<void> _runTest() async {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -592,6 +602,20 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
                         autocorrect: false,
                         style: mono,
                         decoration: const InputDecoration(hintText: '~/code'),
+                      ),
+                    ),
+                    // A 方案（2026-11-06）：填了代理密钥就走容器内认证代理，
+                    // 隧道到 3081 由代理注入签名 cookie，不再需要 launch token。
+                    FormFieldBlock(
+                      label: 'DSH 代理密钥（可选）',
+                      helper: '填了就经认证代理 3081 进（不依赖 launch token）；留空 = 按原来的 token 登录',
+                      child: TextField(
+                        controller: _proxyKey,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        style: AppType.mono(size: 12, color: scheme.onSurface, height: 1.45),
+                        decoration: const InputDecoration(hintText: ' /data/dsh/proxy-key.txt 里的那串'),
                       ),
                     ),
                   ],

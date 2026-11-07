@@ -7,7 +7,6 @@ import '../../l10n/l10n.dart';
 import '../../runtime/local_footprint.dart';
 import '../../runtime/runtime_state.dart';
 import '../../state/account_state.dart';
-import '../../state/ask_ai.dart' show askAiAvailableProvider;
 import '../../state/balance_state.dart';
 import '../../state/connection_state.dart';
 import '../../state/engine_settings_state.dart';
@@ -22,16 +21,13 @@ import '../../state/update_state.dart';
 import '../account/account_page.dart';
 import '../account/account_widgets.dart';
 import '../chat/balance_widgets.dart' show formatMoney;
-import '../common/ask_ai.dart';
 import '../common/overview_card.dart';
 import '../common/search_capsule.dart';
 import '../common/status_chip.dart';
 import '../engine/engine_screen.dart';
 import '../engine/engine_status.dart';
-import '../engine_settings/engine_settings_hub.dart';
 import '../engine_settings/web_search_page.dart';
 import 'media_settings_page.dart';
-import '../features/feature_catalog.dart' show communityPage;
 import '../features/feature_format.dart' show permissionName;
 import '../features/permission_page.dart';
 import '../onboarding/api_key_page.dart' show maskApiKey;
@@ -88,12 +84,9 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final settings = ref.watch(settingsProvider);
-    final runtime = ref.watch(localRuntimeProvider);
-    final engine = EngineStatusView.of(runtime);
     final colors = DshColors.of(context);
     final notifier = ref.read(settingsProvider.notifier);
     final uiMode = ref.watch(uiModeProvider.select((s) => s.mode));
-    final host = ref.watch(activeHostProvider);
     Widget? text(String? value, {Color? color}) =>
         value == null ? null : Text(value, style: color == null ? null : TextStyle(color: color));
 
@@ -121,7 +114,6 @@ class SettingsScreen extends ConsumerWidget {
     final exempt = ref.watch(batteryExemptProvider).value;
     // 主机.
     final ssh = ref.watch(hostsProvider.select((s) => s.ssh.length));
-    final hostName = host.isLocal ? l10n.commonThisPhone : ref.watch(hostNameProvider(host)) ?? l10n.commonRemoteHost;
     // 帮助与关于.
     final update = ref.watch(appUpdateProvider);
     final newVersion = update.hasUpdate && !update.isSkipped;
@@ -266,46 +258,17 @@ class SettingsScreen extends ConsumerWidget {
           title: l10n.hubGroupHosts,
           children: [
             SettingsTile(
-              icon: AppIcons.engine,
-              tint: SettingsHues.hosts,
-              spot: SettingsIndex.entry(SettingsPageId.engine),
-              value: StatusChip(tone: engine.tone, label: engine.label),
-              onTap: () => _push(context, const EngineScreen()),
-            ),
-            SettingsTile(
               icon: AppIcons.remoteHosts,
               tint: SettingsHues.hosts,
               spot: SettingsIndex.entry(SettingsPageId.remote),
               value: ssh == 0 ? null : Text(l10n.hubValueHosts(ssh)),
               onTap: () => _push(context, const RemoteScreen()),
             ),
-            SettingsTile(
-              icon: AppIcons.configure,
-              tint: SettingsHues.hosts,
-              spot: SettingsIndex.entry(SettingsPageId.engineParams),
-              value: Text(hostName),
-              onTap: () => _push(context, const EngineSettingsHubPage()),
-            ),
           ],
         ),
         SettingsSection(
           title: l10n.hubGroupHelp,
           children: [
-            if (ref.watch(askAiAvailableProvider))
-              SettingsTile(
-                key: const ValueKey('settings-ask-ai'),
-                icon: AppIcons.askAi,
-                tint: SettingsHues.help,
-                spot: Spots.askAi,
-                value: Text(l10n.askAiTooltip),
-                onTap: () => unawaited(askAi(context, AskAiTopic.overview)),
-              ),
-            SettingsTile(
-              icon: AppIcons.community,
-              tint: SettingsHues.help,
-              spot: Spots.community,
-              onTap: () => _push(context, communityPage()),
-            ),
             SettingsTile(
               icon: AppIcons.diagnostics,
               tint: SettingsHues.help,

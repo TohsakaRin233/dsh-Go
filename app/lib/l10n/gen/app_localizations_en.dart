@@ -7914,6 +7914,13 @@ class L10nEn extends L10n {
       'Pictures and animations up to 8 MB, videos up to 30 MB. Plays through once on a cold start; tap to skip.';
 
   @override
+  String get launchBootAnimation => 'Opening animation';
+
+  @override
+  String get launchBootAnimationSub =>
+      'A different short clip on each cold start; off brings back the default animation';
+
+  @override
   String get launchChanged => 'Launch screen changed';
 
   @override

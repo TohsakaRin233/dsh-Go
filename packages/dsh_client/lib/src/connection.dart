@@ -152,6 +152,7 @@ class DshConnection {
     Uri baseUri, {
     this.hostHeader,
     this.cookie,
+    this.extraHeaders,
     HttpClient? httpClient,
     this.connectTimeout = const Duration(seconds: 10),
     this.requestTimeout = const Duration(seconds: 120),
@@ -174,6 +175,11 @@ class DshConnection {
 
   /// Overrides the `Host` header (`host:port`); defaults to [baseUri]'s authority.
   final String? hostHeader;
+
+  /// Extra request headers sent with every HTTP exchange and the WebSocket
+  /// upgrade. Used by the auth-proxy mode (`x-dsh-key`) so the proxy can
+  /// mint a signed cookie for this connection (2026-11-06).
+  final Map<String, String>? extraHeaders;
   final Duration connectTimeout;
   final Duration requestTimeout;
   DshTracer? _tracer;
@@ -449,7 +455,11 @@ class DshConnection {
   /// A missing/expired cookie fails the upgrade with HTTP 401 and a fence
   /// failure with 403; both surface as [DshHttpException].
   Future<WebSocket> connectWebSocket(String path, {Duration? timeout}) async {
-    final headers = <String, Object>{if (cookie != null) 'Cookie': cookie!.header, 'Host': ?hostHeader};
+    final headers = <String, Object>{
+      if (cookie != null) 'Cookie': cookie!.header,
+      'Host': ?hostHeader,
+      ...?extraHeaders,
+    };
     final uri = webSocketUri(path);
     var abandoned = false;
     try {
@@ -526,6 +536,7 @@ class DshConnection {
       req.followRedirects = followRedirects;
       _applyHost(req.headers);
       if (cookie != null) req.headers.set(HttpHeaders.cookieHeader, cookie!.header);
+      extraHeaders?.forEach(req.headers.set);
       if (contentType != null) req.headers.set(HttpHeaders.contentTypeHeader, contentType);
       headers?.forEach(req.headers.set);
       if (body != null) {

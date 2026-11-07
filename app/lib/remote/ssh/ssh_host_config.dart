@@ -145,7 +145,7 @@ class SshHostConfig {
 
 /// The secret material for one SSH host, loaded from the [SecretStore].
 class SshSecrets {
-  const SshSecrets({this.password, this.privateKey, this.passphrase});
+  const SshSecrets({this.password, this.privateKey, this.passphrase, this.proxyKey});
 
   final String? password;
 
@@ -153,9 +153,16 @@ class SshSecrets {
   final String? privateKey;
   final String? passphrase;
 
+  /// Optional auth-proxy key (2026-11-06 A 方案): when set, the tunnel points
+  /// at the remote auth proxy (3081) and every request carries `x-dsh-key`,
+  /// so no launch token is needed. Stored in the secret store next to the
+  /// SSH credentials because it is a bearer credential.
+  final String? proxyKey;
+
   static String passwordKey(String hostId) => 'ssh.$hostId.password';
   static String privateKeyKey(String hostId) => 'ssh.$hostId.privateKey';
   static String passphraseKey(String hostId) => 'ssh.$hostId.passphrase';
+  static String proxyKeyKey(String hostId) => 'ssh.$hostId.proxyKey';
 
   bool get isEmpty => (password == null || password!.isEmpty) && (privateKey == null || privateKey!.trim().isEmpty);
 }

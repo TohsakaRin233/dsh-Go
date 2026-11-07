@@ -4816,6 +4816,8 @@
   "launchReplace": "更换图片或视频",
   "launchPreview": "预览",
   "launchFooter": "图片、动图 8 MB 以内，视频 30 MB 以内。冷启动时完整播放一遍，轻点可跳过",
+  "launchBootAnimation": "开屏动画",
+  "launchBootAnimationSub": "冷启动随机播一段鲸鱼娘动画；关掉就用原来的默认动画",
   "launchChanged": "启动画面已更换",
   "launchChangedSize": "启动画面已更换 · {size}",
   "@launchChangedSize": {

@@ -186,6 +186,8 @@ class HostsController extends Notifier<HostsState> {
       await put(SshSecrets.passphraseKey(id), secrets.passphrase);
       await _secrets.delete(SshSecrets.passwordKey(id));
     }
+    // Auth-proxy key (optional): kept for both auth methods, cleared when blank.
+    await put(SshSecrets.proxyKeyKey(id), secrets.proxyKey?.trim());
   }
 
   Future<SshSecrets> loadSecrets(String id) async {
@@ -201,6 +203,7 @@ class HostsController extends Notifier<HostsState> {
       password: await get(SshSecrets.passwordKey(id)),
       privateKey: await get(SshSecrets.privateKeyKey(id)),
       passphrase: await get(SshSecrets.passphraseKey(id)),
+      proxyKey: await get(SshSecrets.proxyKeyKey(id)),
     );
   }
 
@@ -208,7 +211,7 @@ class HostsController extends Notifier<HostsState> {
   Future<void> removeSsh(String id) async {
     await _loaded;
     await _persist([...state.ssh.where((h) => h.id != id)]);
-    for (final key in [SshSecrets.passwordKey(id), SshSecrets.privateKeyKey(id), SshSecrets.passphraseKey(id)]) {
+    for (final key in [SshSecrets.passwordKey(id), SshSecrets.privateKeyKey(id), SshSecrets.passphraseKey(id), SshSecrets.proxyKeyKey(id)]) {
       try {
         await _secrets.delete(key);
       } catch (_) {}
@@ -500,7 +503,11 @@ class RelayAccountController extends AsyncNotifier<RelayAccountState> {
       // Unreadable credentials (or no Keystore, in tests): signed out.
       return base;
     }
-    if (user == null) return base.copyWith(providers: await _loginProviders(backend));
+    // Fork policy: never touch the relay server just because the app started.
+    // The DSH Remote section is hidden in this build, so there is nobody to
+    // show sign-in providers to; providers are fetched only when a login is
+    // actually started (see _startLogin below).
+    if (user == null) return base;
     try {
       return base.copyWith(user: () => user, hosts: await backend.listHosts());
     } catch (_) {

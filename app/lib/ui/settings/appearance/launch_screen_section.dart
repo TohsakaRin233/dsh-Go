@@ -79,6 +79,7 @@ class _LaunchScreenSectionState extends ConsumerState<LaunchScreenSection> {
     final l10n = context.l10n;
     final custom = ref.watch(customLaunchProvider).value;
     final on = custom != null && custom.on;
+    final boot = ref.watch(bootAnimationProvider).value ?? true;
     final notifier = ref.read(customLaunchProvider.notifier);
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -90,6 +91,13 @@ class _LaunchScreenSectionState extends ConsumerState<LaunchScreenSection> {
           onDefault: () => unawaited(notifier.use(false)),
           onCustom: custom == null ? () => unawaited(_choose()) : () => unawaited(notifier.use(true)),
         ),
+        if (!on)
+          SettingsSwitchTile(
+            title: l10n.launchBootAnimation,
+            subtitle: l10n.launchBootAnimationSub,
+            value: boot,
+            onChanged: (value) => unawaited(ref.read(bootAnimationProvider.notifier).set(value)),
+          ),
         ExpandReveal(
           open: on,
           child: Column(

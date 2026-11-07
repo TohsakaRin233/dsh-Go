@@ -79,6 +79,14 @@ func NewBridge(stateDir, hostname, allowedTarget string) *Bridge {
 	_ = os.Setenv("TS_LOGS_DIR", logs)
 	_ = os.Setenv("TMPDIR", tmp)
 
+	// tsnet starts logpolicy unconditionally and logpolicy ships node logs to
+	// log.tailscale.com (logtail.DefaultHost). TS_NO_LOGS_NO_SUPPORT is the
+	// upstream switch: Options.New() then wires a no-op HTTP transport, so
+	// nothing leaves the device. TS_LOG_TARGET points at a black hole as a
+	// second line of defence in case a future tsnet drops that switch.
+	_ = os.Setenv("TS_NO_LOGS_NO_SUPPORT", "1")
+	_ = os.Setenv("TS_LOG_TARGET", "http://127.0.0.1:9")
+
 	b := &Bridge{stateDir: stateDir, hostname: hostname, target: allowedTarget, conns: map[net.Conn]struct{}{}}
 	b.state.Store(StateIdle)
 	return b

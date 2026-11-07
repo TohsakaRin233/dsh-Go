@@ -91,7 +91,17 @@ class _RuntimeSetupPageState extends ConsumerState<RuntimeSetupPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final phase = ref.read(localRuntimeProvider).status.phase;
-      if (phase == RuntimePhase.notInstalled && !_asks) _install();
+      if (phase == RuntimePhase.notInstalled) {
+        // Fork policy: this build ships no on-device runtime, so there is
+        // nothing to unpack. Go straight to the remote host flow instead of
+        // showing an install screen that can never finish.
+        final remote = widget.onRemote;
+        if (remote != null) {
+          remote();
+          return;
+        }
+      }
+      if (!_asks) _install();
     });
   }
 
@@ -154,6 +164,10 @@ class _RuntimeSetupPageState extends ConsumerState<RuntimeSetupPage> {
     final view = _viewFor(state, launchFailed: ref.watch(runtimeInstallProvider));
     if (view == _SetupView.done) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleFinish());
+    }
+    if (view == _SetupView.failed && widget.onRemote != null) {
+      // Same policy for a runtime that is present but broken: no dead-end page.
+      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onRemote!());
     }
     // Choosing → installing slides forward like a step of its own.
     return OnboardingSwitcher(

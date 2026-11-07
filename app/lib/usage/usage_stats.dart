@@ -103,19 +103,23 @@ class UsageStatsController extends Notifier<UsageStatsState> {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (!ref.mounted) return;
-      final enabled = prefs.getBool(enabledKey) ?? true;
+      // Privacy (fork policy): anonymous usage stats never leave the device.
+      // The stored flag is ignored and reset, so an install that once had it on
+      // cannot keep uploading after an upgrade.
+      final enabled = false;
+      if (prefs.getBool(enabledKey) == true) {
+        await prefs.setBool(enabledKey, false);
+      }
       DateTime? time(String key) => switch (prefs.getInt(key)) {
         final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
         null => null,
       };
-      if (enabled) {
-        _ledger = UsageLedger.decode(prefs.getString(daysKey));
-        _iid = prefs.getString(iidKey);
-        _iidSince = time(iidSinceKey);
-        _failedAt = time(failedAtKey);
-        _closedDay = prefs.getString(closedDayKey);
-        _saved = (_ledger.encode(), _iid, _iidSince, _failedAt, _closedDay);
-      }
+      _ledger = UsageLedger.decode(prefs.getString(daysKey));
+      _iid = prefs.getString(iidKey);
+      _iidSince = time(iidSinceKey);
+      _failedAt = time(failedAtKey);
+      _closedDay = prefs.getString(closedDayKey);
+      _saved = (_ledger.encode(), _iid, _iidSince, _failedAt, _closedDay);
       state = UsageStatsState(loaded: true, enabled: enabled, noticed: prefs.getBool(noticedKey) ?? false);
     } catch (_) {
       // No preferences backend: nothing kept, so nothing collected.

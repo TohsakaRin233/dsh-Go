@@ -3,6 +3,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../launch/builtin_launch.dart';
 import '../launch/custom_launch.dart';
 import '../launch/launch_import.dart';
 
@@ -47,5 +48,18 @@ class CustomLaunchController extends AsyncNotifier<CustomLaunch?> {
   Future<void> _store(CustomLaunch custom) async {
     state = AsyncData(custom);
     await CustomLaunch.save(custom);
+  }
+}
+
+/// 开屏动画（随包带的四段，冷启动随机播一段）；默认开。用户自己的画面在用时以它为准。
+final bootAnimationProvider = AsyncNotifierProvider<BootAnimationController, bool>(BootAnimationController.new);
+
+class BootAnimationController extends AsyncNotifier<bool> {
+  @override
+  Future<bool> build() => BuiltinLaunch.isOn();
+
+  Future<void> set(bool on) async {
+    state = AsyncData(on);
+    await BuiltinLaunch.setOn(on);
   }
 }

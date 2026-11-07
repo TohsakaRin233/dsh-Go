@@ -113,6 +113,10 @@ class FakeTransport implements SshTransport {
   @override
   Future<void> get done => _done.future;
 
+  /// Fake transports never ride the embedded tailnet bridge.
+  @override
+  bool get viaBridge => false;
+
   @override
   bool get isClosed => _done.isCompleted;
 

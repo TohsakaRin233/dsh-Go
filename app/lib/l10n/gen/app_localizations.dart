@@ -13718,6 +13718,18 @@ abstract class L10n {
   /// **'图片、动图 8 MB 以内，视频 30 MB 以内。冷启动时完整播放一遍，轻点可跳过'**
   String get launchFooter;
 
+  /// No description provided for @launchBootAnimation.
+  ///
+  /// In zh, this message translates to:
+  /// **'开屏动画'**
+  String get launchBootAnimation;
+
+  /// No description provided for @launchBootAnimationSub.
+  ///
+  /// In zh, this message translates to:
+  /// **'冷启动随机播一段鲸鱼娘动画；关掉就用原来的默认动画'**
+  String get launchBootAnimationSub;
+
   /// No description provided for @launchChanged.
   ///
   /// In zh, this message translates to:

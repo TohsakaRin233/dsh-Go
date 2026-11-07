@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Socket;
 
 import 'package:dsh_client/dsh_client.dart';
 
@@ -106,6 +107,11 @@ class SshHostLink implements HostLink {
   Completer<SshTransport> _ready = Completer<SshTransport>();
   LocalForwarder? _forwarder;
   RemoteDshEndpoint? _endpoint;
+
+  /// Auth-proxy mode (2026-11-06 A 方案): the tunnel points here instead of
+  /// the token-protected 3080, and requests carry `x-dsh-key`.
+  int? _proxyPort;
+  String? _proxyKeyUsed;
   DshClient? _client;
   Future<DshClient>? _opening;
   Timer? _keepAlive;
@@ -245,6 +251,12 @@ class SshHostLink implements HostLink {
     _connectingTransport = transport;
     at(HostLinkStep.startDsh, detail: appL10n.remoteCheckingDsh);
     try {
+      // A 方案（2026-11-06）：host 填了代理密钥就走认证代理——隧道到 3081，
+      // 不用 launch token；代理用 secret 现签 cookie 转发给 3080。
+      final proxyKey = secrets.proxyKey?.trim();
+      if (proxyKey != null && proxyKey.isNotEmpty) {
+        return await _connectProxy(transport, proxyKey, at);
+      }
       final bootstrap = RemoteDshBootstrap(
         transport,
         launchCommand: _config.launchCommand,
@@ -274,6 +286,7 @@ class SshHostLink implements HostLink {
       _checkOpen();
       final previous = _endpoint;
       _endpoint = endpoint;
+      _proxyPort = null;
       if (_forwarder == null) {
         final forwarder = await LocalForwarder.bind(_openChannel);
         if (_closed) {
@@ -304,6 +317,94 @@ class SshHostLink implements HostLink {
     } finally {
       if (identical(_connectingTransport, transport)) _connectingTransport = null;
     }
+  }
+
+  /// Remote port of the auth proxy (dsh-auth-proxy listens on 3081).
+  static const int authProxyPort = 3081;
+
+  /// A 方案 connection: tunnel to the auth proxy and skip token login.
+  /// The proxy validates `x-dsh-key`, mints the DSH signed cookie and
+  /// forwards to 127.0.0.1:3080, so no launch token or stored cookie is
+  /// needed (2026-11-06).
+  Future<DshClient> _connectProxy(
+    SshTransport transport,
+    String proxyKey,
+    void Function(HostLinkStep step, {String? detail}) at,
+  ) async {
+    at(HostLinkStep.tunnel, detail: '127.0.0.1:$authProxyPort (auth-proxy)');
+    try {
+      // Destroy a late channel too: Future.timeout does not cancel the
+      // underlying SSH channel-open request.
+      await transport
+          .openTunnel('127.0.0.1', authProxyPort)
+          .then((channel) => channel.destroy())
+          .timeout(tunnelProbeTimeout);
+    } catch (e) {
+      throw HostLinkError(HostLinkErrorKind.tunnelFailed, appL10n.remoteErrDshPort, detail: '$e', retryable: true);
+    }
+    _checkOpen();
+    _proxyPort = authProxyPort;
+    if (_forwarder == null) {
+      final forwarder = await LocalForwarder.bind(_openChannel);
+      if (_closed) {
+        await forwarder.close();
+        throw StateError('link closed');
+      }
+      _forwarder = forwarder;
+    }
+    _connectingTransport = null;
+    _installTransport(transport);
+
+    at(HostLinkStep.login);
+    final client = await _ensureProxyClient(proxyKey);
+    _checkOpen();
+    _emit(
+      HostLinkStatus(
+        HostLinkPhase.connected,
+        completed: HostLinkStep.values.toSet(),
+        detail: 'auth-proxy 127.0.0.1:$authProxyPort',
+      ),
+    );
+    _startKeepAlive();
+    return client;
+  }
+
+  Future<DshClient> _ensureProxyClient(String proxyKey) async {
+    final existing = _client;
+    if (existing != null && !_needsRelogin && _proxyKeyUsed == proxyKey) {
+      // Same proxy behind the same forward port: the mux reconnects by itself.
+      existing.mux.reconnect();
+      return existing;
+    }
+    final DshClient client;
+    try {
+      client = await DshClient.connect(
+        baseUri: Uri(scheme: 'http', host: '127.0.0.1', port: _forwarder!.port),
+        extraHeaders: {'x-dsh-key': proxyKey},
+      );
+    } on DshHttpException catch (e) {
+      throw HostLinkError(
+        HostLinkErrorKind.loginFailed,
+        e.statusCode == 401 ? appL10n.remoteErrDshSignIn : appL10n.remoteErrDshTokenRejected,
+        detail: '$e',
+        retryable: true,
+      );
+    } on DshException catch (e) {
+      throw HostLinkError(HostLinkErrorKind.tunnelFailed, appL10n.remoteErrDshTunnel, detail: '$e', retryable: true);
+    }
+    if (_closed) {
+      await client.close().catchError((_) {});
+      throw StateError('link closed');
+    }
+    _needsRelogin = false;
+    _proxyKeyUsed = proxyKey;
+    _client = client;
+    _watchMux(client);
+    if (existing != null) {
+      _clients.add(client);
+      unawaited(existing.close().catchError((_) {}));
+    }
+    return client;
   }
 
   Future<DshClient> _ensureClient(RemoteDshEndpoint endpoint, RemoteDshEndpoint? previous) async {
@@ -364,11 +465,11 @@ class SshHostLink implements HostLink {
   /// port any more, reconnect, which starts it again.
   Future<void> _probeDsh() async {
     final transport = _transport;
-    final endpoint = _endpoint;
-    if (transport == null || endpoint == null || !_status.isConnected) return;
+    final port = _endpoint?.port ?? _proxyPort;
+    if (transport == null || port == null || !_status.isConnected) return;
     try {
       // A channel that opens after the timeout is still closed.
-      final probe = transport.openTunnel('127.0.0.1', endpoint.port).then((channel) => channel.destroy());
+      final probe = transport.openTunnel('127.0.0.1', port).then((channel) => channel.destroy());
       await probe.timeout(const Duration(seconds: 5));
     } catch (_) {
       if (!identical(transport, _transport)) return;
@@ -404,7 +505,7 @@ class SshHostLink implements HostLink {
     _checkOpen();
     final transport = _transport ?? await _ready.future.timeout(const Duration(seconds: 20));
     _checkOpen();
-    final port = _endpoint?.port;
+    final port = _endpoint?.port ?? _proxyPort;
     if (port == null) throw StateError('no remote endpoint yet');
     var abandoned = false;
     try {
@@ -449,6 +550,51 @@ class SshHostLink implements HostLink {
       if (_missedPings >= 2 && identical(transport, _transport)) {
         _lost(HostLinkError(HostLinkErrorKind.unreachable, appL10n.remoteErrSshUnresponsive, retryable: true));
       }
+      return false;
+    }
+  }
+
+  /// How long one direct TCP probe may take before we call the LAN absent.
+  static const _directProbeTimeout = Duration(seconds: 3);
+
+  /// Minimum gap between two route re-picks. A flapping Wi-Fi would otherwise
+  /// tear the session down every few seconds.
+  static const _routeReselectCooldown = Duration(seconds: 60);
+
+  DateTime? _lastRouteReselect;
+
+  /// Runs after a network change when the SSH socket is still alive: if the
+  /// session currently rides the embedded tailnet bridge while the host answers
+  /// directly again, drop it so the reconnect picks the direct route. Only the
+  /// bottom transport is replaced — the forward port and the DshClient are
+  /// reused by the normal reconnect path, and the host key is re-verified.
+  Future<void> _preferDirectIfPossible() async {
+    if (_closed) return;
+    final transport = _transport;
+    if (transport == null || !transport.viaBridge) return;
+    final last = _lastRouteReselect;
+    final now = DateTime.now();
+    if (last != null && now.difference(last) < _routeReselectCooldown) return;
+    if (!await _directReachable()) return;
+    if (_closed || _recovering || !identical(transport, _transport)) return;
+    _lastRouteReselect = now;
+    _backoff.reset();
+    _lost(HostLinkError(
+      HostLinkErrorKind.unreachable,
+      appL10n.remoteErrSshNetworkChanged,
+      detail: 'route: tailnet -> direct',
+      retryable: true,
+    ));
+  }
+
+  /// One TCP handshake to the address the person typed. Success means the
+  /// direct route is back.
+  Future<bool> _directReachable() async {
+    try {
+      final socket = await Socket.connect(_config.host, _config.port, timeout: _directProbeTimeout);
+      socket.destroy();
+      return true;
+    } catch (_) {
       return false;
     }
   }
@@ -525,7 +671,12 @@ class SshHostLink implements HostLink {
           if (!alive) {
             _backoff.reset();
             _lost(HostLinkError(HostLinkErrorKind.unreachable, appL10n.remoteErrSshNetworkChanged, retryable: true));
+            return;
           }
+          // The socket survived (typical for the tailnet bridge, which is a
+          // loopback pipe): still worth checking whether the direct route came
+          // back, e.g. the phone just rejoined the home Wi-Fi.
+          await _preferDirectIfPossible();
         }());
       case HostLinkPhase.reconnecting:
         _backoff.reset();

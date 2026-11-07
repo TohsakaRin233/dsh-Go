@@ -82,7 +82,8 @@ class AppUpdateState {
   const AppUpdateState({
     required this.current,
     this.loaded = false,
-    this.autoCheck = true,
+    // Fork policy: no automatic update check against the author's endpoint.
+    this.autoCheck = false,
     this.flavor,
     this.check = UpdateCheckPhase.idle,
     this.checkFailure,
@@ -326,7 +327,8 @@ class AppUpdateController extends Notifier<AppUpdateState> {
     int? ms(String key) => prefs.getInt(key);
     state = state.copyWith(
       loaded: true,
-      autoCheck: prefs.getBool(_autoKey) ?? true,
+      // Fork policy: ignore a stored 'on' so an older install stops checking.
+      autoCheck: false,
       current: current,
       flavor: flavor,
       skippedVersion: () => prefs.getString(_skippedKey),

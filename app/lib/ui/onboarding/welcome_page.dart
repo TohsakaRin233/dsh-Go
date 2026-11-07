@@ -24,7 +24,9 @@ class WelcomePage extends StatelessWidget {
     final colors = DshColors.of(context);
     return OnboardingScaffold(
       children: [
-        const Spacer(flex: 5),
+        const Spacer(flex: 1),
+        const Center(child: _WhaleGreeting()),
+        const SizedBox(height: 12),
         const Center(child: _BrandArrival()),
         const SizedBox(height: 36),
         FadeSlideIn(
@@ -63,6 +65,64 @@ class WelcomePage extends StatelessWidget {
           style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
         ),
       ],
+    );
+  }
+}
+
+/// The whale girl herself, easing in before anything else: this build greets
+/// the person with her standard maid design instead of the bare brand glyph.
+class _WhaleGreeting extends StatefulWidget {
+  const _WhaleGreeting();
+
+  @override
+  State<_WhaleGreeting> createState() => _WhaleGreetingState();
+}
+
+class _WhaleGreetingState extends State<_WhaleGreeting> with SingleTickerProviderStateMixin {
+  late final AnimationController _arrive = AnimationController(vsync: this, duration: AppMotion.slow);
+  late final Animation<double> _curve = CurvedAnimation(parent: _arrive, curve: AppMotion.enter);
+
+  /// Share of the screen height the portrait takes: the person asked for a
+  /// really big welcome figure, so this is deliberately generous.
+  static const _heightFactor = 0.46;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduced(context)) {
+      _arrive.value = 1;
+    } else if (_arrive.isDismissed) {
+      _arrive.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _arrive.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height * _heightFactor;
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (context, child) => Opacity(
+        opacity: _curve.value,
+        child: Transform.translate(
+          offset: Offset(0, 12 * (1 - _curve.value)),
+          child: Transform.scale(scale: 0.96 + 0.04 * _curve.value, child: child),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Image.asset(
+          'assets/whale/whale-welcome.png',
+          height: height,
+          filterQuality: FilterQuality.medium,
+          semanticLabel: '鲸鱼娘',
+        ),
+      ),
     );
   }
 }

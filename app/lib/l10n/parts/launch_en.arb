@@ -13,6 +13,8 @@
   "launchReplace": "Replace picture or video",
   "launchPreview": "Preview",
   "launchFooter": "Pictures and animations up to 8 MB, videos up to 30 MB. Plays through once on a cold start; tap to skip.",
+  "launchBootAnimation": "Opening animation",
+  "launchBootAnimationSub": "A different short clip on each cold start; off brings back the default animation",
   "launchChanged": "Launch screen changed",
   "launchChangedSize": "Launch screen changed · {size}",
   "launchTooLarge": "The picture is over 8 MB",

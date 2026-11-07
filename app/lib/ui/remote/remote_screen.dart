@@ -96,7 +96,10 @@ class RemoteScreen extends ConsumerWidget {
       actions: const [AskAiButton(AskAiTopic.remote)],
       children: [
         _ActiveCard(active: active),
-        _RelaySection(onUse: (h) => _use(context, ref, h)),
+        // Fork policy: the author's relay service (DSH Remote) is not part of
+        // this build. The widget is kept so the code stays compilable, but it
+        // is never shown and its controller no longer probes the server.
+        if (_kShowRelaySection) _RelaySection(onUse: (h) => _use(context, ref, h)),
         SettingsSection(
           title: l10n.remoteSshHosts,
           footer: Text(l10n.remoteSshRequirements),
@@ -117,18 +120,22 @@ class RemoteScreen extends ConsumerWidget {
             ),
           ],
         ),
-        SettingsSection(
-          title: l10n.remoteOtherMethods,
-          children: [
-            SettingsTile(
-              icon: AppIcons.webConsole,
-              tinted: false,
-              title: l10n.remoteWebConsole,
-              subtitle: l10n.remoteWebConsoleProvider,
-              onTap: () => _openConsole(context),
-            ),
-          ],
-        ),
+        // Fork policy: the author's web console (dsh.r2049.cn) is a third-party
+        // page; this build only offers SSH. Hidden, but the code stays so the
+        // widget tree and _openConsole keep compiling.
+        if (_kShowWebConsole)
+          SettingsSection(
+            title: l10n.remoteOtherMethods,
+            children: [
+              SettingsTile(
+                icon: AppIcons.webConsole,
+                tinted: false,
+                title: l10n.remoteWebConsole,
+                subtitle: l10n.remoteWebConsoleProvider,
+                onTap: () => _openConsole(context),
+              ),
+            ],
+          ),
         // Only meaningful once there is a host to come back to.
         if (ssh.isNotEmpty || signedIn)
           SettingsSection(
@@ -359,6 +366,13 @@ class _SshRow extends ConsumerWidget {
     );
   }
 }
+
+/// Whether the author's web console entry (dsh.r2049.cn) is shown. Off here.
+const bool _kShowWebConsole = false;
+
+/// Whether the author's relay (DSH Remote) section is shown. Off in this fork:
+/// all remote access goes SSH (with the embedded tailnet fallback).
+const bool _kShowRelaySection = false;
 
 // ── DSH Remote account ───────────────────────────────────────────────────────
 

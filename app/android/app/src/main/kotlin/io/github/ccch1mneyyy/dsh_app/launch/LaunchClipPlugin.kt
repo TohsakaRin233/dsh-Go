@@ -15,7 +15,8 @@ import kotlin.concurrent.thread
 
 /**
  * A custom launch screen's clip (app/lib/launch/launch_video.dart): MethodChannel `dsh/launch_clip`.
- * The platform's MediaPlayer onto a Flutter texture, silent, played once; the last frame stays.
+ * The platform's MediaPlayer onto a Flutter texture, played once with the clip's own sound; the
+ * last frame stays.
  *
  * - `probe {path, poster}` → `{durationMs, width, height}` (rotation applied) and the first frame
  *   written as a PNG at `poster`; null when it isn't a playable video.
@@ -94,7 +95,8 @@ class LaunchClipPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
         try {
             player.setDataSource(path)
-            player.setVolume(0f, 0f)
+            // 声音跟着片子走：开屏动画自带那句「欢迎回来」，静音就白搭了（主人 2026-11-07 指明）。
+            player.setVolume(1f, 1f)
             player.isLooping = false
             producer.setCallback(object : TextureRegistry.SurfaceProducer.Callback {
                 override fun onSurfaceAvailable() {

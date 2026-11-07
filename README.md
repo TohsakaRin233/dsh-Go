@@ -9,6 +9,13 @@
 > 即可访问用户自有 Tailnet（例如经 NAS 的 SSH 访问 DSH）。设计与真机实测记录见
 > [`docs/embedded-tailnet/`](docs/embedded-tailnet/)。上游更新时本 fork 会同步。
 
+
+> **个人定制（2026-11-06/07）**：本仓库仅自用、不对外发布。在上面的改动之外还做了：移除
+> 不需要的入口（本机引擎、DeepSeek 账号登录、帮助与作者联系方式）、关闭匿名遥测与自动更新、
+> 开屏动画改为随包本地随机播放（1/2/3/5 四段手动挑）。上游项目与版权归
+> [@ccch1mneyyy](https://github.com/ccch1mneyyy) 所有，本 fork 同样遵循 AGPL-3.0。
+
+
 ---
 
 <p align="center">

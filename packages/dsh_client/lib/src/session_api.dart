@@ -200,6 +200,7 @@ class DshClient {
     String? launchUrl,
     DshCookie? cookie,
     String? hostHeader,
+    Map<String, String>? extraHeaders,
     MuxOptions muxOptions = const MuxOptions(),
     DshTracer? tracer,
     bool backgroundSessionLists = false,
@@ -216,7 +217,7 @@ class DshClient {
       launchToken ??= parsed.token;
     }
     if (base == null) throw ArgumentError('baseUri or launchUrl is required');
-    final connection = DshConnection(base, hostHeader: hostHeader, cookie: cookie, tracer: tracer);
+    final connection = DshConnection(base, hostHeader: hostHeader, cookie: cookie, extraHeaders: extraHeaders, tracer: tracer);
     final client = DshClient(
       connection,
       muxOptions: muxOptions,
@@ -226,8 +227,10 @@ class DshClient {
     try {
       if (launchToken != null) {
         await connection.login(launchToken);
-      } else if (cookie == null) {
-        throw ArgumentError('token, launchUrl or cookie is required');
+      } else if (cookie == null && (extraHeaders == null || extraHeaders.isEmpty)) {
+        // An auth-proxy connection carries no token/cookie: the proxy mints
+        // the cookie from `x-dsh-key` on every request (2026-11-06).
+        throw ArgumentError('token, launchUrl, cookie or extraHeaders is required');
       }
       if (startMux) await client.mux.ready(timeout: readyTimeout);
       return client;

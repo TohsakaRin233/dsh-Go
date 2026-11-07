@@ -9,9 +9,9 @@ import 'tailnet_bridge.dart';
 /// the tailnet transparently goes through the embedded bridge.
 ///
 /// Order of attempts:
-///   1. connect straight to params.host:params.port (LAN / public 鈥?unchanged)
+///   1. connect straight to params.host:params.port (LAN / public: unchanged)
 ///   2. on a *retryable* failure, bring the embedded tailnet up and connect to
-///      127.0.0.1:<port>, which forwards to the same target
+///      `127.0.0.1:<port>`, which forwards to the same target
 ///
 /// Nothing in ssh_transport.dart changes: the second attempt is the same
 /// function with a different address, so the SSH handshake, host-key check,
@@ -62,7 +62,9 @@ Future<SshTransport> tailnetAwareTransport(
       connectTimeout: params.connectTimeout,
     );
     try {
-      return await DartSshTransport.connect(local, verifyHostKey);
+      // Tag the transport: this session rides the bridge, so the link can
+      // re-pick the route when the direct one comes back.
+      return await DartSshTransport.connect(local, verifyHostKey, viaBridge: true);
     } on HostLinkError catch (viaTailnet) {
       // Report the address the person actually typed, not 127.0.0.1:<ephemeral>.
       throw HostLinkError(

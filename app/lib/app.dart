@@ -9,6 +9,8 @@ import 'performance/performance_state.dart';
 import 'performance/refresh_rate.dart';
 import 'state/app_info.dart';
 import 'state/appearance_state.dart';
+import 'state/connection_state.dart';
+import 'state/hosts_state.dart';
 import 'state/locale_state.dart';
 import 'state/star_prompt.dart' show starPromptGateProvider, starPromptProvider;
 import 'state/tile_style_state.dart';
@@ -49,6 +51,9 @@ class _DshAppState extends ConsumerState<DshApp> with WidgetsBindingObserver {
   /// lands without a cross-fade, later ones fade (切换配色).
   bool _settled = false;
 
+  /// The warm-up connection held for the life of the app (autoDispose would drop it).
+  ProviderSubscription<AsyncValue<HostConnection?>>? _warm;
+
   @override
   void initState() {
     super.initState();
@@ -64,11 +69,29 @@ class _DshAppState extends ConsumerState<DshApp> with WidgetsBindingObserver {
     // switch as an in-app setting; the app answers frames to run at the fastest rate
     // while it is actually drawing (see RefreshRateService).
     RefreshRateService.instance.start();
+    // 开屏期间就把上次的主机连起来（见 _warmUpRemote）。
+    unawaited(_warmUpRemote());
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// 开屏动画本来就是用来盖住初始化的（主人 2026-11-07 指明）：这次启动一进来就开始
+  /// 连上次用过的主机，不等首页亮出来才建 SSH 链。连不上不影响任何东西——首页照旧
+  /// 自己重连、自己报错。
+  Future<void> _warmUpRemote() async {
+    try {
+      await ref.read(activeHostProvider.notifier).ready;
+      if (!mounted || ref.read(activeHostProvider).isLocal) return;
+      if (!ref.read(remoteAutoConnectProvider)) return;
+      // 连接是 autoDispose 的，没人听会被回收：一直持有到 App 关掉。
+      _warm = ref.listenManual(activeConnectionProvider, (_, _) {});
+    } catch (_) {
+      // 预热失败不挡启动。
+    }
   }
 
   @override
   void dispose() {
+    _warm?.close();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

@@ -65,7 +65,34 @@ class SshConnectParams {
     username: config.user.trim(),
     auth: config.auth,
     secrets: secrets,
+    connectTimeout: connectTimeoutFor(config.host.trim()),
   );
+
+  /// A private address answers fast or not at all: a phone that just left the
+  /// LAN would otherwise burn the full [defaultConnectTimeout] on every
+  /// reconnect before the embedded-tailnet fallback gets its turn.
+  ///
+  /// Public host names keep the long timeout — they pay DNS and a WAN round
+  /// trip, and a slow answer there is normal.
+  static Duration connectTimeoutFor(String host) {
+    if (!_isPrivateHost(host)) return const Duration(seconds: 12);
+    return const Duration(seconds: 3);
+  }
+
+  static bool _isPrivateHost(String host) {
+    final parts = host.split('.');
+    if (parts.length != 4) return false;
+    final a = int.tryParse(parts[0]);
+    final b = int.tryParse(parts[1]);
+    if (a == null || b == null) return false;
+    if (a == 10) return true; // 10.0.0.0/8
+    if (a == 192 && b == 168) return true; // 192.168.0.0/16
+    if (a == 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a == 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 (CGNAT / tailnet)
+    return false;
+  }
+
+  static const Duration defaultConnectTimeout = Duration(seconds: 12);
 
   final String host;
   final int port;
@@ -89,17 +116,33 @@ abstract class SshTransport implements RemoteShell {
   bool get isClosed;
 
   void close();
+
+  /// True when this connection reaches the host through the embedded tailnet
+  /// bridge instead of the address the person typed. The link uses it to
+  /// decide whether a network change is worth re-picking the route: a bridge
+  /// connection is a loopback socket that survives a network switch, so only
+  /// an explicit re-pick can move it back to the direct route.
+  bool get viaBridge => false;
 }
 
 typedef SshTransportFactory = Future<SshTransport> Function(SshConnectParams params, HostKeyCheck verifyHostKey);
 
 /// dartssh2-backed transport.
 class DartSshTransport implements SshTransport {
-  DartSshTransport._(this._client);
+  DartSshTransport._(this._client, {this.viaBridge = false});
 
   final SSHClient _client;
 
-  static Future<SshTransport> connect(SshConnectParams params, HostKeyCheck verifyHostKey) async {
+  @override
+  final bool viaBridge;
+
+  /// [viaBridge] only tags the resulting transport; the dial itself always
+  /// goes to [params.host]. The caller decides which address to pass.
+  static Future<SshTransport> connect(
+    SshConnectParams params,
+    HostKeyCheck verifyHostKey, {
+    bool viaBridge = false,
+  }) async {
     List<SSHKeyPair>? identities;
     if (params.auth == SshAuthMethod.privateKey) {
       identities = await decodePrivateKey(params.secrets.privateKey ?? '', params.secrets.passphrase);
@@ -152,7 +195,7 @@ class DartSshTransport implements SshTransport {
       if (keyVerdict != null) throw keyVerdict!;
       throw describeSshError(e, params);
     }
-    return DartSshTransport._(client);
+    return DartSshTransport._(client, viaBridge: viaBridge);
   }
 
   /// Parses a PEM private key, mapping failures to a person-readable error.
