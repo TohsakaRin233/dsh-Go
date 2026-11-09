@@ -69,7 +69,9 @@ class TailnetStatus {
 /// Intentionally narrow: the app never sees raw Go objects, and the endpoint is
 /// bound to one fixed tailnet target (no generic forwarding).
 abstract class TailnetBridge {
-  Future<void> start();
+  /// Brings the node up, optionally pinning it to [targetHost]:[targetPort]
+  /// first so it can report a login link for that exact destination.
+  Future<void> start({String? targetHost, int? targetPort});
 
   Future<void> stop();
 
@@ -124,8 +126,15 @@ class TailnetBridgeChannel implements TailnetBridge {
   }
 
   @override
-  Future<void> start() async {
-    await _methods.invokeMethod<void>('start');
+  Future<void> start({String? targetHost, int? targetPort}) async {
+    final hasTarget = targetHost != null &&
+        targetHost.isNotEmpty &&
+        targetPort != null &&
+        targetPort > 0 &&
+        targetPort <= 65535;
+    await _methods.invokeMethod<void>('start', {
+      if (hasTarget) ...{'targetHost': targetHost, 'targetPort': targetPort},
+    });
     _last = TailnetStatus.fromJson(await _statusMap());
   }
 

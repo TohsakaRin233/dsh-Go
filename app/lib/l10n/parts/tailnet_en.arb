@@ -1,0 +1,14 @@
+{
+  "tailnetCardTitle": "Embedded Tailnet",
+  "tailnetCardHint": "Use it to reach LAN-only hosts on mobile data. The first run needs one authorization in a browser.",
+  "tailnetStateIdle": "Not started",
+  "tailnetStateStarting": "Starting…",
+  "tailnetStateNeedsLogin": "Waiting for login",
+  "tailnetStateRunning": "Connected",
+  "tailnetStateError": "Failed to start",
+  "tailnetNodeIp": "Node address",
+  "tailnetOpenLogin": "Open login link",
+  "tailnetNeedsLoginError": "The embedded Tailnet is not authorized yet. Open the login link above, finish it once, then test again.",
+  "tailnetStart": "Start node",
+  "tailnetStop": "Stop node"
+}

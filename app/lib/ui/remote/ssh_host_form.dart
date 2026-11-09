@@ -18,6 +18,7 @@ import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'host_key_dialog.dart';
 import 'link_progress.dart';
+import 'tailnet_card.dart';
 import '../common/discard_guard.dart';
 import '../common/smooth_size.dart';
 import '../common/brief_notice.dart';
@@ -664,6 +665,16 @@ class _SshHostFormPageState extends ConsumerState<SshHostFormPage> {
                     ),
                   ),
               ],
+            ),
+            // Sits above the test progress: a tailnet-only address fails the
+            // direct attempt, and the login link for the embedded node is the
+            // only way out of that failure.
+            ListenableBuilder(
+              listenable: _edits,
+              builder: (context, _) => TailnetCard(
+                host: _host.text.trim(),
+                port: int.tryParse(_port.text.trim()) ?? 22,
+              ),
             ),
             _Reveal(
               child: _testStatus == null

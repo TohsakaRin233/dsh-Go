@@ -8,7 +8,7 @@ import io.flutter.plugin.common.EventChannel
 import mobile.Bridge
 import java.io.File
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Process-wide owner of the embedded tsnet node.
@@ -26,6 +26,8 @@ class TailnetBridgeManager private constructor(private val appContext: Context) 
         private const val TAG = "Tailnet"
         private const val NODE_NAME = "dshgo-phone"
         private const val WAIT_RUNNING_MS = 45_000L
+        private const val WATCH_SETTLE_MS = 180_000L
+        private const val WATCH_TICK_MS = 500L
 
         @Volatile
         private var instance: TailnetBridgeManager? = null
@@ -37,6 +39,18 @@ class TailnetBridgeManager private constructor(private val appContext: Context) 
     }
 
     private val executor = Executors.newSingleThreadExecutor()
+
+    /**
+     * Separate from [executor] on purpose: watching the node while it waits for
+     * authorization can take minutes, and must not delay stop()/ensureEndpoint().
+     */
+    private val watcher = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "tailnet-watch").apply { isDaemon = true }
+    }
+
+    /** Bumped on every start/stop so a stale watcher leaves the UI alone. */
+    private val watchEpoch = AtomicInteger(0)
+
     private val main = Handler(Looper.getMainLooper())
 
     private var bridge: Bridge? = null
@@ -57,22 +71,47 @@ class TailnetBridgeManager private constructor(private val appContext: Context) 
 
     fun statusJson(): String = bridge?.statusJSON() ?: """{"state":"idle"}"""
 
-    fun start() {
+    /**
+     * Starts the node, optionally binding it to [host]:[port] first.
+     *
+     * Without a target there is nothing to forward to, so this used to return
+     * immediately — which made a "start the node" button in the UI a no-op.
+     * Now the caller can pass the host form's address, and the node comes up
+     * far enough to hand back its `authUrl`.
+     */
+    fun start(host: String? = null, port: Int? = null) {
         executor.execute {
+            if (host != null && port != null) {
+                val target = "$host:$port"
+                if (currentTarget != target) {
+                    bridge?.stop()
+                    bridge = null
+                    currentTarget = target
+                }
+            }
             // No hard-coded destination on purpose: the target always comes from
-            // ensureEndpoint(), i.e. from the SSH host the person configured.
+            // the SSH host the person configured (or ensureEndpoint()).
             val target = currentTarget
             if (target == null) {
                 pushStatus()
                 return@execute
             }
             val b = bridge ?: Mobile_newBridge(target).also { bridge = it }
-            b.start()
+            try {
+                b.start()
+            } catch (t: Throwable) {
+                Log.w(TAG, "tailnet start failed", t)
+            }
             pushStatus()
+            // tsnet.Up() blocks on its own goroutine, so the node sits in
+            // starting/needs_login for a while; without this the UI would only
+            // ever see the first frame and never the authUrl.
+            watchUntilSettled(b)
         }
     }
 
     fun stop() {
+        watchEpoch.incrementAndGet()
         executor.execute {
             bridge?.stop()
             bridge = null
@@ -122,20 +161,61 @@ class TailnetBridgeManager private constructor(private val appContext: Context) 
         while (System.currentTimeMillis() < deadline) {
             val status = b.statusJSON()
             if (status.contains("\"state\":\"running\"")) break
-            if (status.contains("\"state\":\"error\"")) return 0
+            if (status.contains("\"state\":\"error\"")) {
+                pushStatus(status)
+                return 0
+            }
+            // Waiting out the full timeout cannot help here: the person has to
+            // authorize the node in a browser first. Fail fast and publish the
+            // status so the form can point at the login link instead of hanging.
+            if (status.contains("\"state\":\"needs_login\"")) {
+                pushStatus(status)
+                return 0
+            }
             Thread.sleep(400)
         }
         pushStatus()
         // Already on the manager thread: calling Go directly here. Never
         // submit to the same single-thread executor again — that deadlocks.
-        return b.ensureEndpoint().toInt()
+        // Go's EnsureEndpoint returns an error unless the node is running, and
+        // gomobile turns that into an exception, so it is caught here.
+        return try {
+            b.ensureEndpoint().toInt()
+        } catch (t: Throwable) {
+            Log.w(TAG, "tailnet endpoint unavailable", t)
+            0
+        }
+    }
+
+    /**
+     * Re-publishes the node status until it settles, so a login prompt reaches
+     * Dart. Runs on [watcher]: at most one loop per start, cancelled by the
+     * next start/stop through [watchEpoch].
+     */
+    private fun watchUntilSettled(b: Bridge) {
+        val epoch = watchEpoch.incrementAndGet()
+        watcher.execute {
+            val deadline = System.currentTimeMillis() + WATCH_SETTLE_MS
+            while (epoch == watchEpoch.get() && System.currentTimeMillis() < deadline) {
+                val status = try {
+                    b.statusJSON()
+                } catch (t: Throwable) {
+                    Log.w(TAG, "tailnet status failed", t)
+                    return@execute
+                }
+                pushStatus(status)
+                if (status.contains("\"state\":\"running\"") || status.contains("\"state\":\"error\"")) {
+                    return@execute
+                }
+                Thread.sleep(WATCH_TICK_MS)
+            }
+        }
     }
 
     private fun Mobile_newBridge(target: String): Bridge =
         mobile.Mobile.newBridge(stateDir(), NODE_NAME, target)
 
-    private fun pushStatus() {
-        val json = statusJson()
+    private fun pushStatus(json: String = statusJson()) {
         main.post { sink?.success(json) }
     }
 }

@@ -31,7 +31,14 @@ class TailnetPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChann
         try {
             when (call.method) {
                 "start" -> {
-                    manager.start()
+                    // Optional target: the SSH form passes the host it is
+                    // editing so the node can come up far enough to report
+                    // needs_login + authUrl. Without it this is the old
+                    // "start whatever target is already pinned" call.
+                    val host = call.argument<String>("targetHost")
+                    val port = call.argument<Int>("targetPort")
+                    val hasTarget = !host.isNullOrBlank() && port != null && port in 1..65535
+                    manager.start(if (hasTarget) host else null, if (hasTarget) port else null)
                     result.success(null)
                 }
                 "stop" -> {

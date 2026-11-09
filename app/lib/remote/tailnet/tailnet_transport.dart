@@ -1,4 +1,4 @@
-﻿import 'package:flutter/services.dart';
+import 'package:flutter/services.dart';
 
 import '../../l10n/l10n.dart';
 import '../link_status.dart';
@@ -43,6 +43,18 @@ Future<SshTransport> tailnetAwareTransport(
       );
     }
     if (port <= 0) {
+      // A node that is waiting for authorization can never produce a port on
+      // its own; saying "no port" here sends people looking at the network
+      // instead of at the login link the host form shows.
+      final status = await bridge.status();
+      if (status.phase == TailnetPhase.needsLogin) {
+        throw HostLinkError(
+          HostLinkErrorKind.unreachable,
+          appL10n.tailnetNeedsLoginError,
+          detail: 'tailnet needs login',
+          retryable: true,
+        );
+      }
       throw HostLinkError(
         HostLinkErrorKind.unreachable,
         appL10n.remoteErrAddressUnresponsive(params.host, params.port),
