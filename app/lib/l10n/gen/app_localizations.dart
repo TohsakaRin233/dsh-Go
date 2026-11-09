@@ -29660,6 +29660,78 @@ abstract class L10n {
   /// **'随时随刻，想go就Go！'**
   String get appSlogan;
 
+  /// No description provided for @tailnetCardTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'内嵌 Tailnet'**
+  String get tailnetCardTitle;
+
+  /// No description provided for @tailnetCardHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'在外部网络（流量）下靠它连到内网主机；首次使用要在浏览器里授权一次。'**
+  String get tailnetCardHint;
+
+  /// No description provided for @tailnetStateIdle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启动'**
+  String get tailnetStateIdle;
+
+  /// No description provided for @tailnetStateStarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动中…'**
+  String get tailnetStateStarting;
+
+  /// No description provided for @tailnetStateNeedsLogin.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待登录授权'**
+  String get tailnetStateNeedsLogin;
+
+  /// No description provided for @tailnetStateRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'已连上'**
+  String get tailnetStateRunning;
+
+  /// No description provided for @tailnetStateError.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动失败'**
+  String get tailnetStateError;
+
+  /// No description provided for @tailnetNodeIp.
+  ///
+  /// In zh, this message translates to:
+  /// **'节点地址'**
+  String get tailnetNodeIp;
+
+  /// No description provided for @tailnetOpenLogin.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开登录链接'**
+  String get tailnetOpenLogin;
+
+  /// No description provided for @tailnetNeedsLoginError.
+  ///
+  /// In zh, this message translates to:
+  /// **'内嵌 Tailnet 还没授权：先点上面的「打开登录链接」完成一次登录，再回来测试连接。'**
+  String get tailnetNeedsLoginError;
+
+  /// No description provided for @tailnetStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动节点'**
+  String get tailnetStart;
+
+  /// No description provided for @tailnetStop.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止节点'**
+  String get tailnetStop;
+
   /// No description provided for @updateCheck.
   ///
   /// In zh, this message translates to:

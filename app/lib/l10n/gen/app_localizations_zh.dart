@@ -16219,6 +16219,42 @@ class L10nZh extends L10n {
   String get appSlogan => '随时随刻，想go就Go！';
 
   @override
+  String get tailnetCardTitle => '内嵌 Tailnet';
+
+  @override
+  String get tailnetCardHint => '在外部网络（流量）下靠它连到内网主机；首次使用要在浏览器里授权一次。';
+
+  @override
+  String get tailnetStateIdle => '未启动';
+
+  @override
+  String get tailnetStateStarting => '启动中…';
+
+  @override
+  String get tailnetStateNeedsLogin => '等待登录授权';
+
+  @override
+  String get tailnetStateRunning => '已连上';
+
+  @override
+  String get tailnetStateError => '启动失败';
+
+  @override
+  String get tailnetNodeIp => '节点地址';
+
+  @override
+  String get tailnetOpenLogin => '打开登录链接';
+
+  @override
+  String get tailnetNeedsLoginError => '内嵌 Tailnet 还没授权：先点上面的「打开登录链接」完成一次登录，再回来测试连接。';
+
+  @override
+  String get tailnetStart => '启动节点';
+
+  @override
+  String get tailnetStop => '停止节点';
+
+  @override
   String get updateCheck => '检查更新';
 
   @override

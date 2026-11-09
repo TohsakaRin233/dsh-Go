@@ -17114,6 +17114,44 @@ class L10nEn extends L10n {
   String get appSlogan => 'Anytime, anywhere. Just Go!';
 
   @override
+  String get tailnetCardTitle => 'Embedded Tailnet';
+
+  @override
+  String get tailnetCardHint =>
+      'Use it to reach LAN-only hosts on mobile data. The first run needs one authorization in a browser.';
+
+  @override
+  String get tailnetStateIdle => 'Not started';
+
+  @override
+  String get tailnetStateStarting => 'Starting…';
+
+  @override
+  String get tailnetStateNeedsLogin => 'Waiting for login';
+
+  @override
+  String get tailnetStateRunning => 'Connected';
+
+  @override
+  String get tailnetStateError => 'Failed to start';
+
+  @override
+  String get tailnetNodeIp => 'Node address';
+
+  @override
+  String get tailnetOpenLogin => 'Open login link';
+
+  @override
+  String get tailnetNeedsLoginError =>
+      'The embedded Tailnet is not authorized yet. Open the login link above, finish it once, then test again.';
+
+  @override
+  String get tailnetStart => 'Start node';
+
+  @override
+  String get tailnetStop => 'Stop node';
+
+  @override
   String get updateCheck => 'Check for updates';
 
   @override
